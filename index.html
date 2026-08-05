@@ -36,6 +36,17 @@
       text-decoration: none;
     }
     .popup-link:hover { text-decoration: underline; }
+    .popup-category {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+}
+.popup-desc {
+  font-size: 12px;
+  color: #666;
+  margin-top: 6px;
+  font-style: italic;
+}
   </style>
 </head>
 <body>
@@ -58,10 +69,94 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
 map.on('load', () => {
 
-  map.addSource('universities', {
+  map.addSource('places', {
     type: 'vector',
-    url: `${MARTIN_URL}/universities`
+    url: `${MARTIN_URL}/places`
   });
+
+  // Өнгөний тохиргоо — категориор
+  const categoryColors = {
+    'university': '#1a73e8',
+    'hospital':   '#e53935',
+    'school':     '#43a047',
+    'shop':       '#fb8c00'
+  };
+
+  // Тойрог давхарга
+  map.addLayer({
+    id: 'places-circle',
+    type: 'circle',
+    source: 'places',
+    'source-layer': 'places',
+    paint: {
+      'circle-radius': 11,
+      'circle-color': [
+        'match', ['get', 'category'],
+        'university', '#1a73e8',
+        'hospital',   '#e53935',
+        'school',     '#43a047',
+        'shop',       '#fb8c00',
+        '#888888'
+      ],
+      'circle-stroke-width': 2.5,
+      'circle-stroke-color': '#ffffff',
+      'circle-opacity': 0.9
+    }
+  });
+
+  // Нэрийн давхарга
+  map.addLayer({
+    id: 'places-label',
+    type: 'symbol',
+    source: 'places',
+    'source-layer': 'places',
+    layout: {
+      'text-field': ['get', 'name_short'],
+      'text-size': 11,
+      'text-offset': [0, 1.6],
+      'text-anchor': 'top',
+      'text-font': ['Noto Sans Regular']
+    },
+    paint: {
+      'text-color': '#1a1a2e',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 2
+    }
+  });
+
+  // Popup
+  map.on('click', 'places-circle', (e) => {
+    const p = e.features[0].properties;
+    const categoryName = {
+      'university': '🎓 Их сургууль',
+      'hospital':   '🏥 Эмнэлэг',
+      'school':     '🏫 Дунд сургууль',
+      'shop':       '🛍️ Дэлгүүр'
+    }[p.category] || p.category;
+
+    const phone = p.phone ? `<div class="popup-row">📞 ${p.phone}</div>` : '';
+    const website = p.website ? `<a class="popup-link" href="${p.website}" target="_blank">🌐 Вэбсайт →</a>` : '';
+
+    new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
+      .setLngLat(e.lngLat)
+      .setHTML(`
+        <div class="popup-title">${p.name}</div>
+        <div class="popup-category">${categoryName}</div>
+        <div class="popup-row">📍 ${p.address}</div>
+        ${phone}
+        <div class="popup-desc">${p.description || ''}</div>
+        ${website}
+      `)
+      .addTo(map);
+  });
+
+  map.on('mouseenter', 'places-circle', () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+  map.on('mouseleave', 'places-circle', () => {
+    map.getCanvas().style.cursor = '';
+  });
+});
 
   map.addLayer({
     id: 'uni-circle',
