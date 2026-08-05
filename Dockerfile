@@ -1,4 +1,4 @@
-FROM ghcr.io/maplibre/martin:v0.14
+FROM ghcr.io/maplibre/martin:v1.8.0
 COPY config.yaml /config.yaml
 EXPOSE 3000
 CMD ["--config", "/config.yaml"]
