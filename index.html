@@ -41,6 +41,10 @@
 <body>
 <div id="map"></div>
 <script>
+  maplibregl.setRTLTextPlugin(
+  'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js',
+  null, true
+);
 const MARTIN_URL = 'https://amka-map-server.onrender.com';
 
 const map = new maplibregl.Map({
