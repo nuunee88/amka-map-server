@@ -20,3 +20,18 @@ postgres:
         address: text
         website: text
         students: int
+
+    places:
+      schema: public
+      table: places
+      srid: 4326
+      geometry_column: geom
+      geometry_type: POINT
+      properties:
+        name: text
+        name_short: text
+        category: text
+        address: text
+        phone: text
+        website: text
+        description: text
