@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Улаанбаатарын Их Сургуулиуд</title>
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; }
+    #map { width: 100vw; height: 100vh; }
+    .maplibregl-popup-content {
+      padding: 16px;
+      border-radius: 8px;
+      min-width: 220px;
+    }
+    .popup-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+      border-bottom: 2px solid #f0a500;
+      padding-bottom: 6px;
+    }
+    .popup-row {
+      font-size: 13px;
+      color: #555;
+      margin: 4px 0;
+    }
+    .popup-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: #1a73e8;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .popup-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const MARTIN_URL = 'https://amka-map-server.onrender.com';
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/positron',
+  center: [106.917, 47.918],
+  zoom: 12
+});
+
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+map.on('load', () => {
+
+  map.addSource('universities', {
+    type: 'vector',
+    url: `${MARTIN_URL}/universities`
+  });
+
+  map.addLayer({
+    id: 'uni-circle',
+    type: 'circle',
+    source: 'universities',
+    'source-layer': 'universities',
+    paint: {
+      'circle-radius': 12,
+      'circle-color': '#1a73e8',
+      'circle-stroke-width': 3,
+      'circle-stroke-color': '#ffffff',
+      'circle-opacity': 0.9
+    }
+  });
+
+  map.addLayer({
+    id: 'uni-label',
+    type: 'symbol',
+    source: 'universities',
+    'source-layer': 'universities',
+    layout: {
+      'text-field': ['get', 'name_short'],
+      'text-size': 12,
+      'text-offset': [0, 1.8],
+      'text-anchor': 'top',
+      'text-font': ['Noto Sans Regular']
+    },
+    paint: {
+      'text-color': '#1a1a2e',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 2
+    }
+  });
+
+  map.on('click', 'uni-circle', (e) => {
+    const p = e.features[0].properties;
+    new maplibregl.Popup({ maxWidth: '280px', offset: 15 })
+      .setLngLat(e.lngLat)
+      .setHTML(`
+        <div class="popup-title">${p.name}</div>
+        <div class="popup-row">📍 ${p.address}</div>
+        <div class="popup-row">👥 ${Number(p.students).toLocaleString()} оюутан</div>
+        <a class="popup-link" href="${p.website}" target="_blank">🌐 Вэбсайт →</a>
+      `)
+      .addTo(map);
+  });
+
+  map.on('mouseenter', 'uni-circle', () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+  map.on('mouseleave', 'uni-circle', () => {
+    map.getCanvas().style.cursor = '';
+  });
+});
+</script>
+</body>
+</html>
