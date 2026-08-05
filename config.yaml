@@ -8,19 +8,6 @@ postgres:
   pool_size: 5
 
   tables:
-    universities:
-      schema: public
-      table: universities
-      srid: 4326
-      geometry_column: geom
-      geometry_type: POINT
-      properties:
-        name: text
-        name_short: text
-        address: text
-        website: text
-        students: int
-
     places:
       schema: public
       table: places
