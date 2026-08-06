@@ -1,32 +1,111 @@
 <!DOCTYPE html>
 <html lang="mn">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Улаанбаатарын байгуулагууд</title>
-  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; }
-    #map { width: 100vw; height: 100vh; }
-    .maplibregl-popup-content { padding: 14px; border-radius: 8px; min-width: 220px; }
-    .popup-title { font-weight: 700; font-size: 15px; color: #1a1a2e; margin-bottom: 6px; border-bottom: 2px solid #f0a500; padding-bottom: 5px; }
-    .popup-cat { font-size: 11px; color: #888; margin-bottom: 6px; }
-    .popup-row { font-size: 12px; color: #555; margin: 3px 0; }
-    .popup-desc { font-size: 12px; color: #666; margin-top: 6px; font-style: italic; }
-    .popup-link { display: inline-block; margin-top: 8px; color: #1a73e8; font-size: 13px; text-decoration: none; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Улаанбаатарын байгуулагууд</title>
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; }
+#map { width: 100vw; height: 100vh; }
+.maplibregl-popup-content { padding: 14px; border-radius: 8px; min-width: 220px; }
+.popup-title { font-weight: 700; font-size: 15px; color: #1a1a2e; margin-bottom: 6px; border-bottom: 2px solid #f0a500; padding-bottom: 5px; }
+.popup-cat { font-size: 11px; color: #888; margin-bottom: 6px; }
+.popup-row { font-size: 12px; color: #555; margin: 3px 0; }
+.popup-desc { font-size: 12px; color: #666; margin-top: 6px; font-style: italic; }
+.popup-link { display: inline-block; margin-top: 8px; color: #1a73e8; font-size: 13px; text-decoration: none; }
+</style>
 </head>
 <body>
 <div id="map"></div>
 <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
 var map = null;
+var retryCount = 0;
 
-function initMap() {
-  if (map) {
+function setupLayers() {
+  map.addSource('places', {
+    type: 'vector',
+    url: MARTIN + '/places'
+  });
+
+  map.addLayer({
+    id: 'places-circle',
+    type: 'circle',
+    source: 'places',
+    'source-layer': 'places',
+    paint: {
+      'circle-radius': 11,
+      'circle-color': [
+        'match', ['get', 'category'],
+        'university', '#1a73e8',
+        'hospital', '#e53935',
+        'school', '#43a047',
+        'shop', '#fb8c00',
+        '#888888'
+      ],
+      'circle-stroke-width': 2.5,
+      'circle-stroke-color': '#ffffff'
+    }
+  });
+
+  map.addLayer({
+    id: 'places-label',
+    type: 'symbol',
+    source: 'places',
+    'source-layer': 'places',
+    layout: {
+      'text-field': ['get', 'name_short'],
+      'text-size': 11,
+      'text-offset': [0, 1.6],
+      'text-anchor': 'top'
+    },
+    paint: {
+      'text-color': '#1a1a2e',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 2
+    }
+  });
+
+  map.on('click', 'places-circle', function(e) {
+    var p = e.features[0].properties;
+    var cats = {
+      'university': 'Их сургууль',
+      'hospital': 'Эмнэлэг',
+      'school': 'Дунд сургууль',
+      'shop': 'Дэлгүүр'
+    };
+    var cat = cats[p.category] || p.category;
+    var phone = p.phone ? '<div class="popup-row">Утас: ' + p.phone + '</div>' : '';
+    var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">Вэбсайт</a>' : '';
+    var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
+
+    new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
+      .setLngLat(e.lngLat)
+      .setHTML(
+        '<div class="popup-title">' + p.name + '</div>' +
+        '<div class="popup-cat">' + cat + '</div>' +
+        '<div class="popup-row">' + p.address + '</div>' +
+        phone + desc + web
+      )
+      .addTo(map);
+  });
+
+  map.on('mouseenter', 'places-circle', function() {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+
+  map.on('mouseleave', 'places-circle', function() {
+    map.getCanvas().style.cursor = '';
+  });
+}
+
+function createMap() {
+  if (map !== null) {
     map.remove();
+    map = null;
   }
 
   map = new maplibregl.Map({
@@ -39,95 +118,19 @@ function initMap() {
   map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
   map.on('load', function() {
+    setupLayers();
 
-    map.addSource('places', {
-      type: 'vector',
-      url: MARTIN + '/places'
-    });
-
-    map.addLayer({
-      id: 'places-circle',
-      type: 'circle',
-      source: 'places',
-      'source-layer': 'places',
-      paint: {
-        'circle-radius': 11,
-        'circle-color': [
-          'match', ['get', 'category'],
-          'university', '#1a73e8',
-          'hospital', '#e53935',
-          'school', '#43a047',
-          'shop', '#fb8c00',
-          '#888888'
-        ],
-        'circle-stroke-width': 2.5,
-        'circle-stroke-color': '#ffffff'
+    setTimeout(function() {
+      var found = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
+      if (found === 0 && retryCount < 3) {
+        retryCount = retryCount + 1;
+        createMap();
       }
-    });
-
-    map.addLayer({
-      id: 'places-label',
-      type: 'symbol',
-      source: 'places',
-      'source-layer': 'places',
-      layout: {
-        'text-field': ['get', 'name_short'],
-        'text-size': 11,
-        'text-offset': [0, 1.6],
-        'text-anchor': 'top'
-      },
-      paint: {
-        'text-color': '#1a1a2e',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 2
-      }
-    });
-
-    map.on('click', 'places-circle', function(e) {
-      var p = e.features[0].properties;
-      var cats = {
-        'university': '🎓 Их сургууль',
-        'hospital': '🏥 Эмнэлэг',
-        'school': '🏫 Дунд сургууль',
-        'shop': '🛍️ Дэлгүүр'
-      };
-      var cat = cats[p.category] || p.category;
-      var phone = p.phone ? '<div class="popup-row">📞 ' + p.phone + '</div>' : '';
-      var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">🌐 Вэбсайт →</a>' : '';
-      var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
-
-      new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
-        .setLngLat(e.lngLat)
-        .setHTML(
-          '<div class="popup-title">' + p.name + '</div>' +
-          '<div class="popup-cat">' + cat + '</div>' +
-          '<div class="popup-row">📍 ' + p.address + '</div>' +
-          phone + desc + web
-        )
-        .addTo(map);
-    });
-
-    map.on('mouseenter', 'places-circle', function() {
-      map.getCanvas().style.cursor = 'pointer';
-    });
-
-    map.on('mouseleave', 'places-circle', function() {
-      map.getCanvas().style.cursor = '';
-    });
-
+    }, 3000);
   });
 }
 
-// Эхний удаа үүсгэнэ
-initMap();
-
-// 2 секундын дараа цэг гараагүй бол map-ыг бүхэлд нь дахин үүсгэнэ
-setTimeout(function() {
-  if (!map.getLayer('places-circle') ||
-      map.queryRenderedFeatures({ layers: ['places-circle'] }).length === 0) {
-    initMap();
-  }
-}, 2000);
-</script>  
+createMap();
+</script>
 </body>
 </html>
