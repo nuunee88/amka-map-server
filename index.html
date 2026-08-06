@@ -178,11 +178,17 @@ map.on('load', function() {
     })
     .then(function(data) {
       log('Tilejson OK!<br>id: ' + data.name + '<br>Source нэмж байна...');
-      fullLoad();
+      try {
+        fullLoad();
+        log('fullLoad() дуудагдлаа.<br>startStatusLoop эхэллээ.');
+      } catch (e) {
+        log('FULLLOAD АЛДАА:<br>' + e.message + '<br>' + e.stack.substring(0, 200));
+      }
     })
     .catch(function(err) {
       log('FETCH АЛДАА:<br>' + err.message);
     });
+});
 });
 </script>
 </body>
