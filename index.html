@@ -34,6 +34,8 @@ var map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
 function buildLayers() {
+  if (map.getLayer('places-circle')) return;
+
   map.addLayer({
     id: 'places-circle',
     type: 'circle',
@@ -105,10 +107,7 @@ function buildLayers() {
   });
 }
 
-function fullReset() {
-  if (map.getLayer('places-circle')) map.removeLayer('places-circle');
-  if (map.getLayer('places-label')) map.removeLayer('places-label');
-  if (map.getSource('places')) map.removeSource('places');
+map.on('load', function() {
 
   map.addSource('places', {
     type: 'vector',
@@ -116,24 +115,33 @@ function fullReset() {
   });
 
   buildLayers();
-}
 
-map.on('load', function() {
-  fullReset();
+  // Tile бодитоор ачаалагдах бүрт шалгаж, амжилттай болтол дахин оролдоно
+  var checkCount = 0;
+  var checkInterval = setInterval(function() {
+    checkCount++;
+    var featureCount = map.queryRenderedFeatures({layers: ['places-circle']}).length;
 
-  // Эхний оролдлого ажиллаагүй бол SOURCE-ийг ч оролцуулан бүхэлд нь дахин үүсгэнэ
-  setTimeout(function() {
-    if (map.queryRenderedFeatures({layers: ['places-circle']}).length === 0) {
-      fullReset();
+    if (featureCount > 0) {
+      clearInterval(checkInterval);
+      return;
     }
-  }, 2000);
 
-  // Хоёр дахь оролдлого хийе, зарим тохиолдолд эхнийх хоцордог
-  setTimeout(function() {
-    if (map.queryRenderedFeatures({layers: ['places-circle']}).length === 0) {
-      fullReset();
+    if (checkCount >= 10) {
+      // 10 удаа (5 секунд) оролдсоны дараа source-ийг бүхэлд нь дахин үүсгэнэ
+      if (map.getLayer('places-circle')) map.removeLayer('places-circle');
+      if (map.getLayer('places-label')) map.removeLayer('places-label');
+      if (map.getSource('places')) map.removeSource('places');
+
+      map.addSource('places', {
+        type: 'vector',
+        url: MARTIN + '/places'
+      });
+      buildLayers();
+      clearInterval(checkInterval);
     }
-  }, 4000);
+  }, 500);
+
 });
 </script>
 </body>
