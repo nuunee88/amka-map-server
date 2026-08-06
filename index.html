@@ -54,7 +54,7 @@ function loadIcon(code, dataUrl) {
   return new Promise(function(resolve) {
     var img = new Image();
     img.onload = function() {
-      var size = 48;
+      var size = 128;
       var canvas = document.createElement('canvas');
       canvas.width = size;
       canvas.height = size;
@@ -65,12 +65,12 @@ function loadIcon(code, dataUrl) {
       ctx.arc(size/2, size/2, size/2 - 1, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 5;
       ctx.strokeStyle = '#cccccc';
       ctx.stroke();
 
       // Зургийг голлуулж байрлуулах
-      var pad = 9;
+      var pad = 22;
       var maxW = size - pad * 2;
       var scale = Math.min(maxW / img.width, maxW / img.height);
       var w = img.width * scale;
@@ -145,7 +145,7 @@ map.on('load', function() {
           filter: ['in', ['get','category'], ['literal', withIcon]],
           layout: {
             'icon-image': iconExpr,
-            'icon-size': 1.5,
+            'icon-size': 0.4,
             'icon-allow-overlap': true,
             'icon-ignore-placement': true
           }
