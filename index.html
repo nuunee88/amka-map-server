@@ -116,7 +116,9 @@ function createMap() {
   });
 
   map.addControl(new maplibregl.NavigationControl(), 'top-right');
-
+map.on('error', function(e) {
+    alert('MAP ERROR:\n' + (e.error ? e.error.message : JSON.stringify(e)));
+  });
   map.on('load', function() {
     setupLayers();
 
