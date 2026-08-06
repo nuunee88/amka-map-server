@@ -201,7 +201,7 @@ map.on('load', function(){
 
   map.addLayer({
     id:'places-icon', type:'symbol', source:'places',
-    layout:{ 'icon-image':'', 'icon-size':1.5,
+    layout:{ 'icon-image':'', 'icon-size':0.35,
              'icon-allow-overlap':true, 'icon-ignore-placement':true }
   });
 
@@ -223,18 +223,21 @@ function loadIcon(code, dataUrl) {
   return new Promise(function(resolve) {
     var img = new Image();
     img.onload = function() {
-      var size = 48;
+      var size = 128;
       var canvas = document.createElement('canvas');
       canvas.width = size; canvas.height = size;
       var ctx = canvas.getContext('2d');
+      
       ctx.beginPath();
       ctx.arc(size/2, size/2, size/2 - 1, 0, Math.PI*2);
       ctx.fillStyle = '#ffffff'; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = '#cccccc'; ctx.stroke();
-      var pad = 9, maxW = size - pad*2;
+      ctx.lineWidth = 5; ctx.strokeStyle = '#cccccc'; ctx.stroke();
+      
+      var pad = 22, maxW = size - pad*2;
       var scale = Math.min(maxW/img.width, maxW/img.height);
       var w = img.width*scale, h = img.height*scale;
       ctx.drawImage(img, (size-w)/2, (size-h)/2, w, h);
+      
       var id = 'icon-' + code;
       if (map.hasImage(id)) map.removeImage(id);
       map.addImage(id, ctx.getImageData(0,0,size,size), { pixelRatio: 2 });
