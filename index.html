@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nuunee - Map server</title>
+  <title>Улаанбаатарын байгуулагууд</title>
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
   <style>
@@ -32,7 +32,8 @@ var map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-map.on('load', function() {
+function addPlacesLayer() {
+  if (map.getSource('places')) return;
 
   map.addSource('places', {
     type: 'vector',
@@ -45,71 +46,3 @@ map.on('load', function() {
     source: 'places',
     'source-layer': 'places',
     paint: {
-      'circle-radius': 11,
-      'circle-color': [
-        'match', ['get', 'category'],
-        'university', '#1a73e8',
-        'hospital', '#e53935',
-        'school', '#43a047',
-        'shop', '#fb8c00',
-        '#888888'
-      ],
-      'circle-stroke-width': 2.5,
-      'circle-stroke-color': '#ffffff'
-    }
-  });
-
-  map.addLayer({
-    id: 'places-label',
-    type: 'symbol',
-    source: 'places',
-    'source-layer': 'places',
-    layout: {
-      'text-field': ['get', 'name_short'],
-      'text-size': 11,
-      'text-offset': [0, 1.6],
-      'text-anchor': 'top'
-    },
-    paint: {
-      'text-color': '#1a1a2e',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 2
-    }
-  });
-
-  map.on('click', 'places-circle', function(e) {
-    var p = e.features[0].properties;
-    var cats = {
-      'university': '🎓 Их сургууль',
-      'hospital': '🏥 Эмнэлэг',
-      'school': '🏫 Дунд сургууль',
-      'shop': '🛍️ Дэлгүүр'
-    };
-    var cat = cats[p.category] || p.category;
-    var phone = p.phone ? '<div class="popup-row">📞 ' + p.phone + '</div>' : '';
-    var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">🌐 Вэбсайт →</a>' : '';
-    var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
-
-    new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
-      .setLngLat(e.lngLat)
-      .setHTML(
-        '<div class="popup-title">' + p.name + '</div>' +
-        '<div class="popup-cat">' + cat + '</div>' +
-        '<div class="popup-row">📍 ' + p.address + '</div>' +
-        phone + desc + web
-      )
-      .addTo(map);
-  });
-
-  map.on('mouseenter', 'places-circle', function() {
-    map.getCanvas().style.cursor = 'pointer';
-  });
-
-  map.on('mouseleave', 'places-circle', function() {
-    map.getCanvas().style.cursor = '';
-  });
-
-});
-</script>
-</body>
-</html>
