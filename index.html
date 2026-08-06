@@ -63,18 +63,20 @@ var map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-map.on('load', function() {
+  //энд нэмсэн.
+  var API = 'https://amka-api.onrender.com';
+
+  map.on('load', function() {
 
   map.addSource('places', {
-    type: 'vector',
-    url: MARTIN + '/places'
+    type: 'geojson',
+    data: API + '/places'
   });
 
   map.addLayer({
     id: 'places-circle',
     type: 'circle',
     source: 'places',
-    'source-layer': 'places',
     paint: {
       'circle-radius': 11,
       'circle-color': [
@@ -89,6 +91,7 @@ map.on('load', function() {
       'circle-stroke-color': '#ffffff'
     }
   });
+  // энд нэмсэн.
 
   map.on('click', 'places-circle', function(e) {
     var p = e.features[0].properties;
