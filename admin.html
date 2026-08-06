@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Цэг нэмэх — Admin</title>
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: Arial, sans-serif; display:flex; height:100vh; }
+#map { flex:1; }
+#panel { width:340px; background:#f7f7f7; padding:16px; overflow-y:auto; border-left:1px solid #ddd; }
+h2 { font-size:16px; margin-bottom:12px; color:#1a1a2e; }
+label { display:block; font-size:12px; color:#666; margin:8px 0 3px; }
+input, select, textarea { width:100%; padding:7px; border:1px solid #ccc; border-radius:4px; font-size:13px; font-family:inherit; }
+textarea { height:60px; resize:vertical; }
+button { width:100%; padding:10px; margin-top:12px; border:none; border-radius:4px; font-size:14px; cursor:pointer; }
+#saveBtn { background:#1a73e8; color:#fff; }
+#saveBtn:disabled { background:#aaa; cursor:not-allowed; }
+.hint { background:#fff3cd; border:1px solid #ffe08a; padding:10px; border-radius:4px; font-size:12px; margin-bottom:12px; line-height:1.5; }
+.coord { background:#fff; border:1px solid #ddd; padding:8px; border-radius:4px; font-family:monospace; font-size:12px; margin-top:6px; }
+#msg { margin-top:12px; padding:10px; border-radius:4px; font-size:13px; display:none; }
+.ok { background:#d4edda; color:#155724; }
+.err { background:#f8d7da; color:#721c24; }
+.divider { border-top:1px solid #ddd; margin:16px 0; }
+.item { background:#fff; border:1px solid #ddd; border-radius:4px; padding:8px 10px; margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between; align-items:center; }
+.del { background:#e53935; color:#fff; border:none; border-radius:3px; padding:3px 8px; font-size:11px; cursor:pointer; width:auto; margin:0; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h2>Шинэ цэг нэмэх</h2>
+
+  <div class="hint">Газрын зураг дээр дарж байршил сонгоно уу.</div>
+
+  <label>Админ нууц үг</label>
+  <input type="password" id="adminKey" placeholder="нууц үг">
+
+  <div class="coord" id="coord">Байршил сонгоогүй</div>
+
+  <label>Нэр *</label>
+  <input type="text" id="name" placeholder="Монгол Улсын Их Сургууль">
+
+  <label>Товч нэр</label>
+  <input type="text" id="name_short" placeholder="МУИС">
+
+  <label>Ангилал</label>
+  <select id="category">
+    <option value="university">Их сургууль</option>
+    <option value="hospital">Эмнэлэг</option>
+    <option value="school">Дунд сургууль</option>
+    <option value="shop">Дэлгүүр</option>
+    <option value="other">Бусад</option>
+  </select>
+
+  <label>Хаяг</label>
+  <input type="text" id="address" placeholder="Бага тойруу 1">
+
+  <label>Утас</label>
+  <input type="text" id="phone" placeholder="+976-11-320159">
+
+  <label>Вэбсайт</label>
+  <input type="text" id="website" placeholder="https://...">
+
+  <label>Тайлбар</label>
+  <textarea id="description"></textarea>
+
+  <button id="saveBtn" disabled>Хадгалах</button>
+  <div id="msg"></div>
+
+  <div class="divider"></div>
+  <h2>Бүртгэлтэй цэгүүд</h2>
+  <div id="list">Ачаалж байна...</div>
+</div>
+
+<script>
+var API = 'https://amka-api.onrender.com';
+var picked = null;
+var tempMarker = null;
+
+var savedKey = localStorage.getItem('amka_key');
+if (savedKey) document.getElementById('adminKey').value = savedKey;
+
+var map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }
+    },
+    layers: [{ id: 'osm-base', type: 'raster', source: 'osm' }]
+  },
+  center: [106.9057, 47.9184],
+  zoom: 13
+});
+
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+var COLORS = {
+  university: '#1a73e8', hospital: '#e53935',
+  school: '#43a047', shop: '#fb8c00', other: '#888888'
+};
+
+map.on('load', function() {
+  map.addSource('places', { type: 'geojson', data: API + '/places' });
+  map.addLayer({
+    id: 'places-circle',
+    type: 'circle',
+    source: 'places',
+    paint: {
+      'circle-radius': 9,
+      'circle-color': [
+        'match', ['get', 'category'],
+        'university', '#1a73e8', 'hospital', '#e53935',
+        'school', '#43a047', 'shop', '#fb8c00', '#888888'
+      ],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#ffffff'
+    }
+  });
+  loadList();
+});
+
+map.on('click', function(e) {
+  picked = { lng: e.lngLat.lng, lat: e.lngLat.lat };
+  document.getElementById('coord').textContent =
+    'lng: ' + picked.lng.toFixed(6) + '  lat: ' + picked.lat.toFixed(6);
+  document.getElementById('saveBtn').disabled = false;
+
+  if (tempMarker) tempMarker.remove();
+  tempMarker = new maplibregl.Marker({ color: '#f0a500' })
+    .setLngLat([picked.lng, picked.lat]).addTo(map);
+});
+
+function showMsg(text, isOk) {
+  var m = document.getElementById('msg');
+  m.textContent = text;
+  m.className = isOk ? 'ok' : 'err';
+  m.style.display = 'block';
+  setTimeout(function(){ m.style.display = 'none'; }, 4000);
+}
+
+function refresh() {
+  map.getSource('places').setData(API + '/places?t=' + Date.now());
+  loadList();
+}
+
+document.getElementById('saveBtn').onclick = function() {
+  var key = document.getElementById('adminKey').value;
+  var name = document.getElementById('name').value.trim();
+
+  if (!key) { showMsg('Нууц үг оруулна уу', false); return; }
+  if (!name) { showMsg('Нэр заавал шаардлагатай', false); return; }
+  if (!picked) { showMsg('Байршил сонгоно уу', false); return; }
+
+  localStorage.setItem('amka_key', key);
+  this.disabled = true;
+  this.textContent = 'Хадгалж байна...';
+
+  var body = {
+    name: name,
+    name_short: document.getElementById('name_short').value.trim(),
+    category: document.getElementById('category').value,
+    address: document.getElementById('address').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    website: document.getElementById('website').value.trim(),
+    description: document.getElementById('description').value.trim(),
+    lng: picked.lng,
+    lat: picked.lat
+  };
+
+  var btn = this;
+  fetch(API + '/places', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+    body: JSON.stringify(body)
+  })
+  .then(function(r) { return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
+  .then(function(res) {
+    btn.textContent = 'Хадгалах';
+    if (res.ok) {
+      showMsg('Амжилттай хадгаллаа', true);
+      ['name','name_short','address','phone','website','description'].forEach(function(id) {
+        document.getElementById(id).value = '';
+      });
+      if (tempMarker) { tempMarker.remove(); tempMarker = null; }
+      picked = null;
+      document.getElementById('coord').textContent = 'Байршил сонгоогүй';
+      btn.disabled = true;
+      refresh();
+    } else {
+      showMsg('Алдаа: ' + (res.d.error || 'тодорхойгүй'), false);
+      btn.disabled = false;
+    }
+  })
+  .catch(function(err) {
+    btn.textContent = 'Хадгалах';
+    btn.disabled = false;
+    showMsg('Сүлжээний алдаа: ' + err.message, false);
+  });
+};
+
+function loadList() {
+  fetch(API + '/places?t=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(gj) {
+      var el = document.getElementById('list');
+      if (!gj.features || gj.features.length === 0) {
+        el.innerHTML = '<div style="font-size:12px;color:#888">Цэг байхгүй</div>';
+        return;
+      }
+      el.innerHTML = gj.features.map(function(f) {
+        var p = f.properties;
+        return '<div class="item"><span>' + p.name +
+               '</span><button class="del" onclick="delPlace(' + p.id + ')">Устгах</button></div>';
+      }).join('');
+    });
+}
+
+window.delPlace = function(id) {
+  var key = document.getElementById('adminKey').value;
+  if (!key) { showMsg('Нууц үг оруулна уу', false); return; }
+  if (!confirm('Устгах уу?')) return;
+
+  fetch(API + '/places/' + id, {
+    method: 'DELETE',
+    headers: { 'x-admin-key': key }
+  })
+  .then(function(r) {
+    if (r.ok) { showMsg('Устгалаа', true); refresh(); }
+    else { showMsg('Устгаж чадсангүй', false); }
+  });
+};
+</script>
+</body>
+</html>
