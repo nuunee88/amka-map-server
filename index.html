@@ -130,7 +130,9 @@ function createMap() {
   });
 }
 
-createMap();
+window.addEventListener('load', function() {
+  setTimeout(createMap, 500);
+});
 </script>
 </body>
 </html>
