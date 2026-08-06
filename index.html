@@ -10,6 +10,11 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, sans-serif; }
 #map { width: 100vw; height: 100vh; }
+#status {
+  position: absolute; top: 10px; left: 10px; z-index: 999;
+  background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
+  font-size: 13px; padding: 12px 16px; border-radius: 6px; line-height: 1.8;
+}
 .maplibregl-popup-content { padding: 14px; border-radius: 8px; min-width: 220px; }
 .popup-title { font-weight: 700; font-size: 15px; color: #1a1a2e; margin-bottom: 6px; border-bottom: 2px solid #f0a500; padding-bottom: 5px; }
 .popup-cat { font-size: 11px; color: #888; margin-bottom: 6px; }
@@ -19,21 +24,45 @@ body { font-family: Arial, sans-serif; }
 </style>
 </head>
 <body>
+<div id="status">Эхэлж байна...</div>
 <div id="map"></div>
 <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
 var map = null;
-var retryCount = 0;
+var steps = [];
 
-function setupLayers() {
-alert('1: setupLayers эхэллээ');
-map.addSource('places', {
+function report(txt) {
+  steps.push(txt);
+  document.getElementById('status').innerHTML = steps.join('<br>');
+}
+
+report('1. Script ачаалагдсан');
+
+map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/positron',
+  center: [106.9057, 47.9184],
+  zoom: 14
+});
+
+report('2. Map үүсгэсэн');
+
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+map.on('error', function(e) {
+  report('ERROR: ' + (e.error ? e.error.message : 'unknown'));
+});
+
+map.on('load', function() {
+  report('3. load event fired');
+
+  map.addSource('places', {
     type: 'vector',
     url: MARTIN + '/places'
   });
-  
-alert('2: addSource дууссан. Source: ' + (map.getSource('places') ? 'OK' : 'FAIL'));
-  
+
+  report('4. addSource дууссан');
+
   map.addLayer({
     id: 'places-circle',
     type: 'circle',
@@ -54,12 +83,8 @@ alert('2: addSource дууссан. Source: ' + (map.getSource('places') ? 'OK' 
     }
   });
 
-  alert('3: circle layer нэмэгдсэн. Layer: ' + (map.getLayer('places-circle') ? 'OK' : 'FAIL'));
+  report('5. circle layer нэмэгдсэн');
 
-  setTimeout(function() {
-    alert('4: 4 секундын дараа Feature тоо: ' + map.queryRenderedFeatures({layers: ['places-circle']}).length);
-  }, 4000);
-}
   map.addLayer({
     id: 'places-label',
     type: 'symbol',
@@ -77,6 +102,8 @@ alert('2: addSource дууссан. Source: ' + (map.getSource('places') ? 'OK' 
       'text-halo-width': 2
     }
   });
+
+  report('6. label layer нэмэгдсэн');
 
   map.on('click', 'places-circle', function(e) {
     var p = e.features[0].properties;
@@ -109,40 +136,19 @@ alert('2: addSource дууссан. Source: ' + (map.getSource('places') ? 'OK' 
   map.on('mouseleave', 'places-circle', function() {
     map.getCanvas().style.cursor = '';
   });
-}
 
-function createMap() {
-  if (map !== null) {
-    map.remove();
-    map = null;
-  }
+  report('7. Event handler нэмэгдсэн');
 
-  map = new maplibregl.Map({
-    container: 'map',
-    style: 'https://tiles.openfreemap.org/styles/positron',
-    center: [106.9057, 47.9184],
-    zoom: 14
-  });
+  var checks = 0;
+  var timer = setInterval(function() {
+    checks++;
+    var n = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
+    report('8. Шалгалт ' + checks + ': Feature = ' + n);
+    if (n > 0 || checks >= 20) {
+      clearInterval(timer);
+    }
+  }, 1000);
 
-  map.addControl(new maplibregl.NavigationControl(), 'top-right');
-map.on('error', function(e) {
-    alert('MAP ERROR:\n' + (e.error ? e.error.message : JSON.stringify(e)));
-  });
-  map.on('load', function() {
-    setupLayers();
-
-    setTimeout(function() {
-      var found = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
-      if (found === 0 && retryCount < 3) {
-        retryCount = retryCount + 1;
-        createMap();
-      }
-    }, 3000);
-  });
-}
-
-window.addEventListener('load', function() {
-  setTimeout(createMap, 500);
 });
 </script>
 </body>
