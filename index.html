@@ -169,7 +169,20 @@ window.manualReload = function() {
 };
 
 map.on('load', function() {
-  fullLoad();
+  log('Martin сервертэй холбогдож байна...');
+
+  fetch(MARTIN + '/places')
+    .then(function(r) {
+      log('Fetch статус: ' + r.status + '<br>Ачаалж байна...');
+      return r.json();
+    })
+    .then(function(data) {
+      log('Tilejson OK!<br>id: ' + data.name + '<br>Source нэмж байна...');
+      fullLoad();
+    })
+    .catch(function(err) {
+      log('FETCH АЛДАА:<br>' + err.message);
+    });
 });
 </script>
 </body>
