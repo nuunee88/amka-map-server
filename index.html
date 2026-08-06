@@ -10,58 +10,47 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, sans-serif; }
 #map { width: 100vw; height: 100vh; }
-#status {
-  position: absolute; top: 10px; left: 10px; z-index: 999;
-  background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
-  font-size: 13px; padding: 12px 16px; border-radius: 6px; line-height: 1.8;
-}
 .maplibregl-popup-content { padding: 14px; border-radius: 8px; min-width: 220px; }
 .popup-title { font-weight: 700; font-size: 15px; color: #1a1a2e; margin-bottom: 6px; border-bottom: 2px solid #f0a500; padding-bottom: 5px; }
 .popup-cat { font-size: 11px; color: #888; margin-bottom: 6px; }
 .popup-row { font-size: 12px; color: #555; margin: 3px 0; }
 .popup-desc { font-size: 12px; color: #666; margin-top: 6px; font-style: italic; }
 .popup-link { display: inline-block; margin-top: 8px; color: #1a73e8; font-size: 13px; text-decoration: none; }
+#legend {
+  position: absolute; bottom: 30px; left: 10px; z-index: 999;
+  background: rgba(255,255,255,0.95); padding: 12px 16px; border-radius: 8px;
+  font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
 </style>
 </head>
 <body>
-<div id="status">Эхэлж байна...</div>
 <div id="map"></div>
+<div id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#1a73e8"></div>Их сургууль</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div>Эмнэлэг</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#43a047"></div>Дунд сургууль</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fb8c00"></div>Дэлгүүр</div>
+</div>
 <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
-var map = null;
-var steps = [];
 
-function report(txt) {
-  steps.push(txt);
-  document.getElementById('status').innerHTML = steps.join('<br>');
-}
-
-report('1. Script ачаалагдсан');
-
-map = new maplibregl.Map({
+var map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/positron',
   center: [106.9057, 47.9184],
-  zoom: 14
+  zoom: 13
 });
-
-report('2. Map үүсгэсэн');
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-map.on('error', function(e) {
-  report('ERROR: ' + (e.error ? e.error.message : 'unknown'));
-});
-
 map.on('load', function() {
-  report('3. load event fired');
 
   map.addSource('places', {
     type: 'vector',
     url: MARTIN + '/places'
   });
-
-  report('4. addSource дууссан');
 
   map.addLayer({
     id: 'places-circle',
@@ -82,8 +71,6 @@ map.on('load', function() {
       'circle-stroke-color': '#ffffff'
     }
   });
-
-  report('5. circle layer нэмэгдсэн');
 
   map.on('click', 'places-circle', function(e) {
     var p = e.features[0].properties;
@@ -116,18 +103,6 @@ map.on('load', function() {
   map.on('mouseleave', 'places-circle', function() {
     map.getCanvas().style.cursor = '';
   });
-
-  report('7. Event handler нэмэгдсэн');
-
-  var checks = 0;
-  var timer = setInterval(function() {
-    checks++;
-    var n = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
-    report('8. Шалгалт ' + checks + ': Feature = ' + n);
-    if (n > 0 || checks >= 20) {
-      clearInterval(timer);
-    }
-  }, 1000);
 
 });
 </script>
