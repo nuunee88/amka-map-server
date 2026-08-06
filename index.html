@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+window.onerror = function(msg, url, line, col, error) {
+  document.title = 'ERR: ' + msg + ' @ line ' + line;
+  alert('JS ERROR:\n' + msg + '\nLine: ' + line + ':' + col);
+};
+</script>
   <title>Улаанбаатарын байгуулагууд</title>
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
