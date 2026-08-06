@@ -26,11 +26,14 @@ var map = null;
 var retryCount = 0;
 
 function setupLayers() {
-  map.addSource('places', {
+alert('1: setupLayers эхэллээ');
+map.addSource('places', {
     type: 'vector',
     url: MARTIN + '/places'
   });
-
+  
+alert('2: addSource дууссан. Source: ' + (map.getSource('places') ? 'OK' : 'FAIL'));
+  
   map.addLayer({
     id: 'places-circle',
     type: 'circle',
@@ -51,6 +54,12 @@ function setupLayers() {
     }
   });
 
+  alert('3: circle layer нэмэгдсэн. Layer: ' + (map.getLayer('places-circle') ? 'OK' : 'FAIL'));
+
+  setTimeout(function() {
+    alert('4: 4 секундын дараа Feature тоо: ' + map.queryRenderedFeatures({layers: ['places-circle']}).length);
+  }, 4000);
+}
   map.addLayer({
     id: 'places-label',
     type: 'symbol',
