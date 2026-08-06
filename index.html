@@ -85,26 +85,6 @@ map.on('load', function() {
 
   report('5. circle layer нэмэгдсэн');
 
-  map.addLayer({
-    id: 'places-label',
-    type: 'symbol',
-    source: 'places',
-    'source-layer': 'places',
-    layout: {
-      'text-field': ['get', 'name_short'],
-      'text-size': 11,
-      'text-offset': [0, 1.6],
-      'text-anchor': 'top'
-    },
-    paint: {
-      'text-color': '#1a1a2e',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 2
-    }
-  });
-
-  report('6. label layer нэмэгдсэн');
-
   map.on('click', 'places-circle', function(e) {
     var p = e.features[0].properties;
     var cats = {
