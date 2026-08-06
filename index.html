@@ -19,10 +19,10 @@ body { font-family: Arial, sans-serif; }
 #legend {
   position: absolute; bottom: 30px; left: 10px; z-index: 999;
   background: rgba(255,255,255,0.95); padding: 12px 16px; border-radius: 8px;
-  font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-.legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #999; }
 </style>
 </head>
 <body>
@@ -38,9 +38,27 @@ var MARTIN = 'https://amka-map-server.onrender.com';
 
 var map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/positron',
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }
+    },
+    layers: [
+      {
+        id: 'osm-base',
+        type: 'raster',
+        source: 'osm'
+      }
+    ]
+  },
   center: [106.9057, 47.9184],
-  zoom: 13
+  zoom: 14
 });
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
