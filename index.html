@@ -33,98 +33,140 @@ var map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-function addPlacesLayer() {
-  if (map.getSource('places')) {
-    map.removeLayer('places-circle');
-    map.removeLayer('places-label');
-    map.removeSource('places');
-  }
+map.on('load', function() {
 
   map.addSource('places', {
     type: 'vector',
     url: MARTIN + '/places'
   });
 
-  map.addLayer({
-    id: 'places-circle',
-    type: 'circle',
-    source: 'places',
-    'source-layer': 'places',
-    paint: {
-      'circle-radius': 11,
-      'circle-color': [
-        'match', ['get', 'category'],
-        'university', '#1a73e8',
-        'hospital', '#e53935',
-        'school', '#43a047',
-        'shop', '#fb8c00',
-        '#888888'
-      ],
-      'circle-stroke-width': 2.5,
-      'circle-stroke-color': '#ffffff'
+  // Source бэлэн болмогц (эхний удаад) layer нэмнэ
+  map.once('sourcedata', function checkSource(e) {
+    if (e.sourceId === 'places' && e.isSourceLoaded) {
+      addLayers();
+    } else {
+      map.once('sourcedata', checkSource);
     }
   });
 
-  map.addLayer({
-    id: 'places-label',
-    type: 'symbol',
-    source: 'places',
-    'source-layer': 'places',
-    layout: {
-      'text-field': ['get', 'name_short'],
-      'text-size': 11,
-      'text-offset': [0, 1.6],
-      'text-anchor': 'top'
-    },
-    paint: {
-      'text-color': '#1a1a2e',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 2
-    }
-  });
+  function addLayers() {
+    if (map.getLayer('places-circle')) return;
 
-  map.on('click', 'places-circle', function(e) {
-    var p = e.features[0].properties;
-    var cats = {
-      'university': '🎓 Их сургууль',
-      'hospital': '🏥 Эмнэлэг',
-      'school': '🏫 Дунд сургууль',
-      'shop': '🛍️ Дэлгүүр'
-    };
-    var cat = cats[p.category] || p.category;
-    var phone = p.phone ? '<div class="popup-row">📞 ' + p.phone + '</div>' : '';
-    var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">🌐 Вэбсайт →</a>' : '';
-    var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
+    map.addLayer({
+      id: 'places-circle',
+      type: 'circle',
+      source: 'places',
+      'source-layer': 'places',
+      paint: {
+        'circle-radius': 11,
+        'circle-color': [
+          'match', ['get', 'category'],
+          'university', '#1a73e8',
+          'hospital', '#e53935',
+          'school', '#43a047',
+          'shop', '#fb8c00',
+          '#888888'
+        ],
+        'circle-stroke-width': 2.5,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
 
-    new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
-      .setLngLat(e.lngLat)
-      .setHTML(
-        '<div class="popup-title">' + p.name + '</div>' +
-        '<div class="popup-cat">' + cat + '</div>' +
-        '<div class="popup-row">📍 ' + p.address + '</div>' +
-        phone + desc + web
-      )
-      .addTo(map);
-  });
+    map.addLayer({
+      id: 'places-label',
+      type: 'symbol',
+      source: 'places',
+      'source-layer': 'places',
+      layout: {
+        'text-field': ['get', 'name_short'],
+        'text-size': 11,
+        'text-offset': [0, 1.6],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'text-color': '#1a1a2e',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2
+      }
+    });
 
-  map.on('mouseenter', 'places-circle', function() {
-    map.getCanvas().style.cursor = 'pointer';
-  });
+    map.on('click', 'places-circle', function(e) {
+      var p = e.features[0].properties;
+      var cats = {
+        'university': '🎓 Их сургууль',
+        'hospital': '🏥 Эмнэлэг',
+        'school': '🏫 Дунд сургууль',
+        'shop': '🛍️ Дэлгүүр'
+      };
+      var cat = cats[p.category] || p.category;
+      var phone = p.phone ? '<div class="popup-row">📞 ' + p.phone + '</div>' : '';
+      var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">🌐 Вэбсайт →</a>' : '';
+      var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
 
-  map.on('mouseleave', 'places-circle', function() {
-    map.getCanvas().style.cursor = '';
-  });
-}
+      new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          '<div class="popup-title">' + p.name + '</div>' +
+          '<div class="popup-cat">' + cat + '</div>' +
+          '<div class="popup-row">📍 ' + p.address + '</div>' +
+          phone + desc + web
+        )
+        .addTo(map);
+    });
 
-map.on('load', function() {
-  addPlacesLayer();
+    map.on('mouseenter', 'places-circle', function() {
+      map.getCanvas().style.cursor = 'pointer';
+    });
 
-  // MapLibre race condition-оос сэргийлж 1.2 секундын дараа албадан дахин ачаална
-  setTimeout(function() {
-    if (map.queryRenderedFeatures({layers: ['places-circle']}).length === 0) {
-      addPlacesLayer();
-    }
-  }, 1200);
+    map.on('mouseleave', 'places-circle', function() {
+      map.getCanvas().style.cursor = '';
+    });
+
+    // Нэмэлт баталгаа — 1 секундын дараа шалгаад феchер алга бол дахин нэм
+    setTimeout(function() {
+      if (map.queryRenderedFeatures({layers: ['places-circle']}).length === 0) {
+        map.removeLayer('places-circle');
+        map.removeLayer('places-label');
+        map.addLayer({
+          id: 'places-circle',
+          type: 'circle',
+          source: 'places',
+          'source-layer': 'places',
+          paint: {
+            'circle-radius': 11,
+            'circle-color': [
+              'match', ['get', 'category'],
+              'university', '#1a73e8',
+              'hospital', '#e53935',
+              'school', '#43a047',
+              'shop', '#fb8c00',
+              '#888888'
+            ],
+            'circle-stroke-width': 2.5,
+            'circle-stroke-color': '#ffffff'
+          }
+        });
+        map.addLayer({
+          id: 'places-label',
+          type: 'symbol',
+          source: 'places',
+          'source-layer': 'places',
+          layout: {
+            'text-field': ['get', 'name_short'],
+            'text-size': 11,
+            'text-offset': [0, 1.6],
+            'text-anchor': 'top'
+          },
+          paint: {
+            'text-color': '#1a1a2e',
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 2
+          }
+        });
+      }
+    }, 1500);
+  }
+
 });
 </script>
 </body>
