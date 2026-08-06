@@ -27,105 +27,93 @@ body { font-family: Arial, sans-serif; }
 </head>
 <body>
 <div id="map"></div>
-<div id="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#1a73e8"></div>Их сургууль</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div>Эмнэлэг</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#43a047"></div>Дунд сургууль</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#fb8c00"></div>Дэлгүүр</div>
-</div>
+<div id="legend"></div>
 <script>
-var MARTIN = 'https://amka-map-server.onrender.com';
+var API = 'https://amka-api.onrender.com';
+var cats = [];
 
 var map = new maplibregl.Map({
   container: 'map',
   style: {
     version: 8,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }
-    },
-    layers: [
-      {
-        id: 'osm-base',
-        type: 'raster',
-        source: 'osm'
-      }
-    ]
+    sources: { osm: {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256, maxzoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }},
+    layers: [{ id:'osm-base', type:'raster', source:'osm' }]
   },
   center: [106.9057, 47.9184],
-  zoom: 14
+  zoom: 13
 });
-
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-  //энд нэмсэн.
-  var API = 'https://amka-api.onrender.com';
+map.on('load', function(){
+  fetch(API + '/categories')
+    .then(function(r){ return r.json(); })
+    .then(function(list){
+      cats = list;
+      buildLegend();
+      return fetch(API + '/places');
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(gj){
+      map.addSource('places', { type:'geojson', data: gj });
 
-  map.on('load', function() {
+      var expr = ['match', ['get','category']];
+      cats.forEach(function(c){ expr.push(c.code, c.color); });
+      expr.push('#888888');
 
-  map.addSource('places', {
-    type: 'geojson',
-    data: API + '/places'
-  });
+      map.addLayer({
+        id:'places-circle', type:'circle', source:'places',
+        paint:{
+          'circle-radius':11, 'circle-color':expr,
+          'circle-stroke-width':2.5, 'circle-stroke-color':'#ffffff'
+        }
+      });
 
-  map.addLayer({
-    id: 'places-circle',
-    type: 'circle',
-    source: 'places',
-    paint: {
-      'circle-radius': 11,
-      'circle-color': [
-        'match', ['get', 'category'],
-        'university', '#1a73e8',
-        'hospital', '#e53935',
-        'school', '#43a047',
-        'shop', '#fb8c00',
-        '#888888'
-      ],
-      'circle-stroke-width': 2.5,
-      'circle-stroke-color': '#ffffff'
-    }
-  });
-  // энд нэмсэн.
+      map.on('click','places-circle', function(e){
+        var p = e.features[0].properties;
+        var c = cats.find(function(x){ return x.code === p.category; });
+        var catLabel = c ? c.name : p.category;
+        var phone = p.phone ? '<div class="popup-row">Утас: '+p.phone+'</div>' : '';
+        var web = p.website ? '<a class="popup-link" href="'+p.website+'" target="_blank">Вэбсайт</a>' : '';
+        var desc = p.description ? '<div class="popup-desc">'+p.description+'</div>' : '';
+        new maplibregl.Popup({ maxWidth:'300px', offset:15 })
+          .setLngLat(e.lngLat)
+          .setHTML('<div class="popup-title">'+p.name+'</div>' +
+                   '<div class="popup-cat">'+catLabel+'</div>' +
+                   '<div class="popup-row">'+(p.address||'')+'</div>' +
+                   phone + desc + web)
+          .addTo(map);
+      });
 
-  map.on('click', 'places-circle', function(e) {
-    var p = e.features[0].properties;
-    var cats = {
-      'university': 'Их сургууль',
-      'hospital': 'Эмнэлэг',
-      'school': 'Дунд сургууль',
-      'shop': 'Дэлгүүр'
-    };
-    var cat = cats[p.category] || p.category;
-    var phone = p.phone ? '<div class="popup-row">Утас: ' + p.phone + '</div>' : '';
-    var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">Вэбсайт</a>' : '';
-    var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
-
-    new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
-      .setLngLat(e.lngLat)
-      .setHTML(
-        '<div class="popup-title">' + p.name + '</div>' +
-        '<div class="popup-cat">' + cat + '</div>' +
-        '<div class="popup-row">' + p.address + '</div>' +
-        phone + desc + web
-      )
-      .addTo(map);
-  });
-
-  map.on('mouseenter', 'places-circle', function() {
-    map.getCanvas().style.cursor = 'pointer';
-  });
-
-  map.on('mouseleave', 'places-circle', function() {
-    map.getCanvas().style.cursor = '';
-  });
-
+      map.on('mouseenter','places-circle', function(){ map.getCanvas().style.cursor='pointer'; });
+      map.on('mouseleave','places-circle', function(){ map.getCanvas().style.cursor=''; });
+    });
 });
+
+function buildLegend(){
+  var el = document.getElementById('legend');
+  el.innerHTML = '<div style="font-weight:600;margin-bottom:7px;font-size:12px">Ангилал</div>' +
+    cats.map(function(c){
+      var dot = c.icon
+        ? '<img src="'+c.icon+'" style="width:14px;height:14px;object-fit:contain">'
+        : '<div class="legend-dot" style="background:'+c.color+'"></div>';
+      return '<div class="legend-item" data-code="'+c.code+'">' + dot + c.name + '</div>';
+    }).join('') +
+    '<div class="legend-item" data-code="" style="margin-top:6px;border-top:1px solid #ddd;padding-top:6px">Бүгдийг харах</div>';
+
+  el.querySelectorAll('.legend-item').forEach(function(it){
+    it.style.cursor = 'pointer';
+    it.onclick = function(){
+      var code = it.dataset.code;
+      if (!map.getLayer('places-circle')) return;
+      map.setFilter('places-circle', code ? ['==', ['get','category'], code] : null);
+    };
+  });
+}
 </script>
 </body>
 </html>
