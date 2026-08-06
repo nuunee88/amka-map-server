@@ -107,35 +107,40 @@ function buildLayers() {
   });
 }
 
-function attemptLoad() {
-  // Зөвхөн SOURCE-ийг нэмнэ, layer-ийг шууд нэмэхгүй
-  if (map.getLayer('places-circle')) map.removeLayer('places-circle');
-  if (map.getLayer('places-label')) map.removeLayer('places-label');
-  if (map.getSource('places')) map.removeSource('places');
+// Камерыг бага зэрэг хөдөлгөж MapLibre-г tile ачаалахад түлхэц өгнө
+function nudge() {
+  map.panBy([1, 0], { duration: 0 });
+  map.panBy([-1, 0], { duration: 0 });
+}
+
+map.on('load', function() {
 
   map.addSource('places', {
     type: 'vector',
     url: MARTIN + '/places'
   });
 
-  // Source нэмснээс хойш 3 секунд хүлээгээд ЗӨВХӨН ДАРАА нь layer нэмнэ
-  setTimeout(function() {
-    buildLayers();
+  buildLayers();
 
-    // Layer нэмснээс хойш дахин 3 секунд хүлээгээд шалгана
-    setTimeout(function() {
-      var count = map.queryRenderedFeatures({layers: ['places-circle']}).length;
-      if (count === 0) {
-        // Амжилтгүй бол бүхэлд нь дахин оролдоно
-        attemptLoad();
-      }
-    }, 3000);
+  var attempts = 0;
+  var maxAttempts = 25; // ойролцоогоор 25 секунд
 
-  }, 3000);
-}
+  var nudgeInterval = setInterval(function() {
+    attempts++;
+    var count = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
 
-map.on('load', function() {
-  attemptLoad();
+    if (count > 0) {
+      clearInterval(nudgeInterval);
+      return;
+    }
+
+    nudge();
+
+    if (attempts >= maxAttempts) {
+      clearInterval(nudgeInterval);
+    }
+  }, 1000);
+
 });
 </script>
 </body>
