@@ -116,8 +116,11 @@ map.on('load', function() {
 
   buildLayers();
 
-  // Tile бодитоор ачаалагдах бүрт шалгаж, амжилттай болтол дахин оролдоно
+  // 60 секундын турш 1 секунд тутам шалгана — Render сервер сэрэхэд удаан ч болно
   var checkCount = 0;
+  var maxChecks = 60;
+  var didReset = false;
+
   var checkInterval = setInterval(function() {
     checkCount++;
     var featureCount = map.queryRenderedFeatures({layers: ['places-circle']}).length;
@@ -127,8 +130,9 @@ map.on('load', function() {
       return;
     }
 
-    if (checkCount >= 10) {
-      // 10 удаа (5 секунд) оролдсоны дараа source-ийг бүхэлд нь дахин үүсгэнэ
+    // 15 секундын дараа нэг удаа source-ийг бүхэлд нь дахин үүсгэж үзнэ
+    if (checkCount === 15 && !didReset) {
+      didReset = true;
       if (map.getLayer('places-circle')) map.removeLayer('places-circle');
       if (map.getLayer('places-label')) map.removeLayer('places-label');
       if (map.getSource('places')) map.removeSource('places');
@@ -138,9 +142,12 @@ map.on('load', function() {
         url: MARTIN + '/places'
       });
       buildLayers();
+    }
+
+    if (checkCount >= maxChecks) {
       clearInterval(checkInterval);
     }
-  }, 500);
+  }, 1000);
 
 });
 </script>
