@@ -21,7 +21,7 @@
 </head>
 <body>
 <div id="map"></div>
-<script>
+  <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
 
 var map = new maplibregl.Map({
@@ -107,48 +107,35 @@ function buildLayers() {
   });
 }
 
-map.on('load', function() {
+function attemptLoad() {
+  // Зөвхөн SOURCE-ийг нэмнэ, layer-ийг шууд нэмэхгүй
+  if (map.getLayer('places-circle')) map.removeLayer('places-circle');
+  if (map.getLayer('places-label')) map.removeLayer('places-label');
+  if (map.getSource('places')) map.removeSource('places');
 
   map.addSource('places', {
     type: 'vector',
     url: MARTIN + '/places'
   });
 
-  buildLayers();
+  // Source нэмснээс хойш 3 секунд хүлээгээд ЗӨВХӨН ДАРАА нь layer нэмнэ
+  setTimeout(function() {
+    buildLayers();
 
-  // 60 секундын турш 1 секунд тутам шалгана — Render сервер сэрэхэд удаан ч болно
-  var checkCount = 0;
-  var maxChecks = 60;
-  var didReset = false;
+    // Layer нэмснээс хойш дахин 3 секунд хүлээгээд шалгана
+    setTimeout(function() {
+      var count = map.queryRenderedFeatures({layers: ['places-circle']}).length;
+      if (count === 0) {
+        // Амжилтгүй бол бүхэлд нь дахин оролдоно
+        attemptLoad();
+      }
+    }, 3000);
 
-  var checkInterval = setInterval(function() {
-    checkCount++;
-    var featureCount = map.queryRenderedFeatures({layers: ['places-circle']}).length;
+  }, 3000);
+}
 
-    if (featureCount > 0) {
-      clearInterval(checkInterval);
-      return;
-    }
-
-    // 15 секундын дараа нэг удаа source-ийг бүхэлд нь дахин үүсгэж үзнэ
-    if (checkCount === 15 && !didReset) {
-      didReset = true;
-      if (map.getLayer('places-circle')) map.removeLayer('places-circle');
-      if (map.getLayer('places-label')) map.removeLayer('places-label');
-      if (map.getSource('places')) map.removeSource('places');
-
-      map.addSource('places', {
-        type: 'vector',
-        url: MARTIN + '/places'
-      });
-      buildLayers();
-    }
-
-    if (checkCount >= maxChecks) {
-      clearInterval(checkInterval);
-    }
-  }, 1000);
-
+map.on('load', function() {
+  attemptLoad();
 });
 </script>
 </body>
