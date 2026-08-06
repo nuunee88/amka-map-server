@@ -22,94 +22,112 @@
 <div id="map"></div>
 <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
+var map = null;
 
-var map = new maplibregl.Map({
-  container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/positron',
-  center: [106.917, 47.918],
-  zoom: 12
-});
+function initMap() {
+  if (map) {
+    map.remove();
+  }
 
-map.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-map.on('load', function() {
-
-  map.addSource('places', {
-    type: 'vector',
-    url: MARTIN + '/places'
+  map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+    center: [106.917, 47.918],
+    zoom: 12
   });
 
-  map.addLayer({
-    id: 'places-circle',
-    type: 'circle',
-    source: 'places',
-    'source-layer': 'places',
-    paint: {
-      'circle-radius': 11,
-      'circle-color': [
-        'match', ['get', 'category'],
-        'university', '#1a73e8',
-        'hospital', '#e53935',
-        'school', '#43a047',
-        'shop', '#fb8c00',
-        '#888888'
-      ],
-      'circle-stroke-width': 2.5,
-      'circle-stroke-color': '#ffffff'
-    }
+  map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+  map.on('load', function() {
+
+    map.addSource('places', {
+      type: 'vector',
+      url: MARTIN + '/places'
+    });
+
+    map.addLayer({
+      id: 'places-circle',
+      type: 'circle',
+      source: 'places',
+      'source-layer': 'places',
+      paint: {
+        'circle-radius': 11,
+        'circle-color': [
+          'match', ['get', 'category'],
+          'university', '#1a73e8',
+          'hospital', '#e53935',
+          'school', '#43a047',
+          'shop', '#fb8c00',
+          '#888888'
+        ],
+        'circle-stroke-width': 2.5,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+
+    map.addLayer({
+      id: 'places-label',
+      type: 'symbol',
+      source: 'places',
+      'source-layer': 'places',
+      layout: {
+        'text-field': ['get', 'name_short'],
+        'text-size': 11,
+        'text-offset': [0, 1.6],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'text-color': '#1a1a2e',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2
+      }
+    });
+
+    map.on('click', 'places-circle', function(e) {
+      var p = e.features[0].properties;
+      var cats = {
+        'university': '🎓 Их сургууль',
+        'hospital': '🏥 Эмнэлэг',
+        'school': '🏫 Дунд сургууль',
+        'shop': '🛍️ Дэлгүүр'
+      };
+      var cat = cats[p.category] || p.category;
+      var phone = p.phone ? '<div class="popup-row">📞 ' + p.phone + '</div>' : '';
+      var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">🌐 Вэбсайт →</a>' : '';
+      var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
+
+      new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          '<div class="popup-title">' + p.name + '</div>' +
+          '<div class="popup-cat">' + cat + '</div>' +
+          '<div class="popup-row">📍 ' + p.address + '</div>' +
+          phone + desc + web
+        )
+        .addTo(map);
+    });
+
+    map.on('mouseenter', 'places-circle', function() {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+
+    map.on('mouseleave', 'places-circle', function() {
+      map.getCanvas().style.cursor = '';
+    });
+
   });
+}
 
-  map.addLayer({
-    id: 'places-label',
-    type: 'symbol',
-    source: 'places',
-    'source-layer': 'places',
-    layout: {
-      'text-field': ['get', 'name_short'],
-      'text-size': 11,
-      'text-offset': [0, 1.6],
-      'text-anchor': 'top'
-    },
-    paint: {
-      'text-color': '#1a1a2e',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 2
-    }
-  });
+// Эхний удаа үүсгэнэ
+initMap();
 
-  map.on('click', 'places-circle', function(e) {
-    var p = e.features[0].properties;
-    var cats = {
-      'university': '🎓 Их сургууль',
-      'hospital': '🏥 Эмнэлэг',
-      'school': '🏫 Дунд сургууль',
-      'shop': '🛍️ Дэлгүүр'
-    };
-    var cat = cats[p.category] || p.category;
-    var phone = p.phone ? '<div class="popup-row">📞 ' + p.phone + '</div>' : '';
-    var web = p.website ? '<a class="popup-link" href="' + p.website + '" target="_blank">🌐 Вэбсайт →</a>' : '';
-    var desc = p.description ? '<div class="popup-desc">' + p.description + '</div>' : '';
-
-    new maplibregl.Popup({ maxWidth: '300px', offset: 15 })
-      .setLngLat(e.lngLat)
-      .setHTML(
-        '<div class="popup-title">' + p.name + '</div>' +
-        '<div class="popup-cat">' + cat + '</div>' +
-        '<div class="popup-row">📍 ' + p.address + '</div>' +
-        phone + desc + web
-      )
-      .addTo(map);
-  });
-
-  map.on('mouseenter', 'places-circle', function() {
-    map.getCanvas().style.cursor = 'pointer';
-  });
-
-  map.on('mouseleave', 'places-circle', function() {
-    map.getCanvas().style.cursor = '';
-  });
-
-});
-</script>
+// 2 секундын дараа цэг гараагүй бол map-ыг бүхэлд нь дахин үүсгэнэ
+setTimeout(function() {
+  if (!map.getLayer('places-circle') ||
+      map.queryRenderedFeatures({ layers: ['places-circle'] }).length === 0) {
+    initMap();
+  }
+}, 2000);
+</script>  
 </body>
 </html>
