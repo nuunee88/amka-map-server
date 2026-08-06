@@ -191,12 +191,20 @@ var map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
 map.on('load', function(){
-  map.addSource('places', { type:'geojson', data: { type:'FeatureCollection', features: [] } });
+  map.addSource('places', { type:'geojson', data:{ type:'FeatureCollection', features:[] } });
+
   map.addLayer({
     id:'places-circle', type:'circle', source:'places',
     paint:{ 'circle-radius':9, 'circle-color':'#888',
             'circle-stroke-width':2, 'circle-stroke-color':'#fff' }
   });
+
+  map.addLayer({
+    id:'places-icon', type:'symbol', source:'places',
+    layout:{ 'icon-image':'', 'icon-size':0.55,
+             'icon-allow-overlap':true, 'icon-ignore-placement':true }
+  });
+
   loadAll();
 });
 
@@ -211,12 +219,30 @@ map.on('click', function(e){
     .setLngLat([picked.lng, picked.lat]).addTo(map);
 });
 
-function applyColors(){
-  if (!map.getLayer('places-circle')) return;
-  var expr = ['match', ['get','category']];
-  cats.forEach(function(c){ expr.push(c.code, c.color); });
-  expr.push('#888888');
-  map.setPaintProperty('places-circle', 'circle-color', expr);
+function loadIcon(code, dataUrl) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      var size = 48;
+      var canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      var ctx = canvas.getContext('2d');
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size/2 - 1, 0, Math.PI*2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#cccccc'; ctx.stroke();
+      var pad = 9, maxW = size - pad*2;
+      var scale = Math.min(maxW/img.width, maxW/img.height);
+      var w = img.width*scale, h = img.height*scale;
+      ctx.drawImage(img, (size-w)/2, (size-h)/2, w, h);
+      var id = 'icon-' + code;
+      if (map.hasImage(id)) map.removeImage(id);
+      map.addImage(id, ctx.getImageData(0,0,size,size), { pixelRatio: 2 });
+      resolve(true);
+    };
+    img.onerror = function(){ resolve(false); };
+    img.src = dataUrl;
+  });
 }
 
 /* ─── Мессеж ─── */
@@ -227,6 +253,29 @@ function msg(el, text, ok){
   m.style.display = 'block';
   if (ok) setTimeout(function(){ m.style.display='none'; }, 4000);
 }
+  
+function applyStyles(){
+  if (!map.getLayer('places-circle')) return;
+
+  var withIcon = cats.filter(function(c){ return c.icon; }).map(function(c){ return c.code; });
+
+  var colorExpr = ['match', ['get','category']];
+  cats.forEach(function(c){ colorExpr.push(c.code, c.color); });
+  colorExpr.push('#888888');
+  map.setPaintProperty('places-circle', 'circle-color', colorExpr);
+
+  if (withIcon.length > 0) {
+    map.setFilter('places-circle', ['!', ['in', ['get','category'], ['literal', withIcon]]]);
+    map.setFilter('places-icon',   ['in', ['get','category'], ['literal', withIcon]]);
+    var iconExpr = ['match', ['get','category']];
+    cats.forEach(function(c){ if (c.icon) iconExpr.push(c.code, 'icon-' + c.code); });
+    iconExpr.push('');
+    map.setLayoutProperty('places-icon', 'icon-image', iconExpr);
+  } else {
+    map.setFilter('places-circle', null);
+    map.setFilter('places-icon', ['==', ['get','category'], '___none___']);
+  }
+}
 
 /* ─── Өгөгдөл ачаалах ─── */
 function loadAll(){
@@ -236,7 +285,12 @@ function loadAll(){
       cats = list;
       renderCatSelects();
       renderCatList();
-      applyColors();
+      var jobs = cats.filter(function(c){ return c.icon; })
+                     .map(function(c){ return loadIcon(c.code, c.icon); });
+      return Promise.all(jobs);
+    })
+    .then(function(){
+      applyStyles();
       return fetch(API + '/places?t=' + Date.now());
     })
     .then(function(r){ return r.json(); })
