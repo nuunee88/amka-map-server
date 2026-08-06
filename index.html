@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Улаанбаатарын байгуулагууд</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
   <style>
@@ -33,7 +34,11 @@ var map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
 function addPlacesLayer() {
-  if (map.getSource('places')) return;
+  if (map.getSource('places')) {
+    map.removeLayer('places-circle');
+    map.removeLayer('places-label');
+    map.removeSource('places');
+  }
 
   map.addSource('places', {
     type: 'vector',
@@ -114,15 +119,12 @@ function addPlacesLayer() {
 map.on('load', function() {
   addPlacesLayer();
 
-  // Хэрэв эхний оролдлого амжилтгүй бол 1.5 секундын дараа дахин оролдоно
+  // MapLibre race condition-оос сэргийлж 1.2 секундын дараа албадан дахин ачаална
   setTimeout(function() {
     if (map.queryRenderedFeatures({layers: ['places-circle']}).length === 0) {
-      map.removeLayer('places-circle');
-      map.removeLayer('places-label');
-      map.removeSource('places');
       addPlacesLayer();
     }
-  }, 1500);
+  }, 1200);
 });
 </script>
 </body>
