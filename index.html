@@ -34,6 +34,7 @@
 <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
 var debugEl = document.getElementById('debug');
+var statusInterval = null;
 
 function log(msg) {
   debugEl.innerHTML = msg;
@@ -122,6 +123,33 @@ function buildLayers() {
   });
 }
 
+function startStatusLoop() {
+  if (statusInterval) clearInterval(statusInterval);
+
+  var seconds = 0;
+  statusInterval = setInterval(function() {
+    seconds++;
+    var count = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
+    var tilesLoaded = 'N/A';
+    var src = map.getSource('places');
+    if (src && src._tiles) {
+      tilesLoaded = Object.keys(src._tiles).length;
+    }
+
+    log(
+      'Хугацаа: ' + seconds + 'с<br>' +
+      'Feature: ' + count + '<br>' +
+      'Tiles: ' + tilesLoaded + '<br>' +
+      'Zoom: ' + map.getZoom().toFixed(1) +
+      '<br><button id="reloadBtn" onclick="window.manualReload()">Дахин ачаалах</button>'
+    );
+
+    if (count > 0 || seconds >= 60) {
+      clearInterval(statusInterval);
+    }
+  }, 1000);
+}
+
 function fullLoad() {
   if (map.getLayer('places-circle')) map.removeLayer('places-circle');
   if (map.getLayer('places-label')) map.removeLayer('places-label');
@@ -133,40 +161,15 @@ function fullLoad() {
   });
 
   buildLayers();
-  log('Source + Layer нэмэгдсэн.<br>Хүлээж байна...<button id="reloadBtn" onclick="window.manualReload()">Дахин ачаалах</button>');
+  startStatusLoop();
 }
 
 window.manualReload = function() {
-  log('Дахин ачааллаж байна...');
   fullLoad();
 };
 
 map.on('load', function() {
   fullLoad();
-
-  var seconds = 0;
-  var statusInterval = setInterval(function() {
-    seconds++;
-    var count = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
-    var tilesLoaded = map.getSource('places') && map.getSource('places')._tiles
-      ? Object.keys(map.getSource('places')._tiles).length : 'N/A';
-
-    log(
-      'Хугацаа: ' + seconds + 'с<br>' +
-      'Feature: ' + count + '<br>' +
-      'Tiles: ' + tilesLoaded + '<br>' +
-      'Zoom: ' + map.getZoom().toFixed(1) +
-      '<button id="reloadBtn" onclick="window.manualReload()">Дахин ачаалах</button>'
-    );
-
-    if (count > 0) {
-      clearInterval(statusInterval);
-    }
-
-    if (seconds >= 60) {
-      clearInterval(statusInterval);
-    }
-  }, 1000);
 });
 </script>
 </body>
