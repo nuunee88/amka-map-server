@@ -3,12 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
-window.onerror = function(msg, url, line, col, error) {
-  document.title = 'ERR: ' + msg + ' @ line ' + line;
-  alert('JS ERROR:\n' + msg + '\nLine: ' + line + ':' + col);
-};
-</script>
   <title>Улаанбаатарын байгуулагууд</title>
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
@@ -22,29 +16,12 @@ window.onerror = function(msg, url, line, col, error) {
     .popup-row { font-size: 12px; color: #555; margin: 3px 0; }
     .popup-desc { font-size: 12px; color: #666; margin-top: 6px; font-style: italic; }
     .popup-link { display: inline-block; margin-top: 8px; color: #1a73e8; font-size: 13px; text-decoration: none; }
-    #debug {
-      position: absolute; top: 10px; left: 10px; z-index: 999;
-      background: rgba(0,0,0,0.85); color: #0f0; font-family: monospace;
-      font-size: 12px; padding: 10px 14px; border-radius: 6px; max-width: 320px;
-      line-height: 1.6;
-    }
-    #reloadBtn {
-      background: #f0a500; color: #fff; border: none; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; font-size: 12px; margin-top: 6px;
-    }
   </style>
 </head>
 <body>
-<div id="debug">Ачаалж байна...</div>
 <div id="map"></div>
 <script>
 var MARTIN = 'https://amka-map-server.onrender.com';
-var debugEl = document.getElementById('debug');
-var statusInterval = null;
-
-function log(msg) {
-  debugEl.innerHTML = msg;
-}
 
 var map = new maplibregl.Map({
   container: 'map',
@@ -55,8 +32,12 @@ var map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-function buildLayers() {
-  if (map.getLayer('places-circle')) return;
+map.on('load', function() {
+
+  map.addSource('places', {
+    type: 'vector',
+    url: MARTIN + '/places'
+  });
 
   map.addLayer({
     id: 'places-circle',
@@ -127,73 +108,7 @@ function buildLayers() {
   map.on('mouseleave', 'places-circle', function() {
     map.getCanvas().style.cursor = '';
   });
-}
 
-function startStatusLoop() {
-  if (statusInterval) clearInterval(statusInterval);
-
-  var seconds = 0;
-  statusInterval = setInterval(function() {
-    seconds++;
-    var count = map.queryRenderedFeatures({ layers: ['places-circle'] }).length;
-    var tilesLoaded = 'N/A';
-    var src = map.getSource('places');
-    if (src && src._tiles) {
-      tilesLoaded = Object.keys(src._tiles).length;
-    }
-
-    log(
-      'Хугацаа: ' + seconds + 'с<br>' +
-      'Feature: ' + count + '<br>' +
-      'Tiles: ' + tilesLoaded + '<br>' +
-      'Zoom: ' + map.getZoom().toFixed(1) +
-      '<br><button id="reloadBtn" onclick="window.manualReload()">Дахин ачаалах</button>'
-    );
-
-    if (count > 0 || seconds >= 60) {
-      clearInterval(statusInterval);
-    }
-  }, 1000);
-}
-
-function fullLoad() {
-  if (map.getLayer('places-circle')) map.removeLayer('places-circle');
-  if (map.getLayer('places-label')) map.removeLayer('places-label');
-  if (map.getSource('places')) map.removeSource('places');
-
-  map.addSource('places', {
-    type: 'vector',
-    url: MARTIN + '/places'
-  });
-
-  buildLayers();
-  startStatusLoop();
-}
-
-window.manualReload = function() {
-  fullLoad();
-};
-
-map.on('load', function() {
-  log('Martin сервертэй холбогдож байна...');
-
-  fetch(MARTIN + '/places')
-    .then(function(r) {
-      log('Fetch статус: ' + r.status + '<br>Ачаалж байна...');
-      return r.json();
-    })
-    .then(function(data) {
-      log('Tilejson OK!<br>id: ' + data.name + '<br>Source нэмж байна...');
-      try {
-        fullLoad();
-        log('fullLoad() дуудагдлаа.<br>startStatusLoop эхэллээ.');
-      } catch (e) {
-        log('FULLLOAD АЛДАА:<br>' + e.message + '<br>' + e.stack.substring(0, 200));
-      }
-    })
-    .catch(function(err) {
-      log('FETCH АЛДАА:<br>' + err.message);
-    });
 });
 </script>
 </body>
