@@ -23,11 +23,20 @@ body { font-family: Arial, sans-serif; }
 }
 .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #999; }
+ #myloc {
+  position: absolute; top: 10px; left: 10px; z-index: 999;
+  background: rgba(255,255,255,0.96); padding: 11px 14px;
+  border-radius: 8px; font-size: 12px; max-width: 240px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  display: none;
+}
 </style>
 </head>
 <body>
 <div id="map"></div>
-<div id="legend"></div>
+<div id="legend"></div>  
+  //Байршил авах хэсэгт хамаатай.
+<div id="myloc"></div>  
 <script>
 var API = 'https://amka-api.onrender.com';
 var cats = [];
@@ -48,6 +57,85 @@ var map = new maplibregl.Map({
   zoom: 13
 });
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+  //Байршлын товч нэмэх хэсэг.
+var geolocate = new maplibregl.GeolocateControl({
+  positionOptions: {enableHighAccuracy: true, timeout: 10000 },
+  trackUserLocation: true,      // хөдлөхөд дагаж шинэчилнэ
+  showUserHeading: true,        // харж буй чиглэлийг харуулна
+  showAccuracyCircle: true      // нарийвчлалын хүрээ
+});
+
+map.addControl(geolocate, 'top-right');
+
+var myLngLat = null;
+
+geolocate.on('geolocate', function(e) {
+  myLngLat = [e.coords.longitude, e.coords.latitude];
+
+  var box = document.getElementById('myloc');
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div style="font-weight:600;margin-bottom:5px">Таны байршил</div>' +
+    '<div style="font-family:monospace;font-size:11px;color:#555">' +
+      myLngLat[1].toFixed(6) + ', ' + myLngLat[0].toFixed(6) +
+    '</div>' +
+    '<div style="font-size:11px;color:#888;margin-top:3px">' +
+      'Нарийвчлал: ±' + Math.round(e.coords.accuracy) + ' м' +
+    '</div>' +
+    nearestHtml(myLngLat);
+});
+
+geolocate.on('error', function(e) {
+  var box = document.getElementById('myloc');
+  box.style.display = 'block';
+  box.innerHTML = '<div style="color:#e53935">Байршил тодорхойлж чадсангүй</div>' +
+    '<div style="font-size:11px;color:#888;margin-top:3px">Зөвшөөрөл олгосон эсэхээ шалгана уу</div>';
+});
+
+// Хоёр цэгийн хоорондох зай (метр) — Haversine
+function distanceM(a, b) {
+  var R = 6371000;
+  var dLat = (b[1] - a[1]) * Math.PI / 180;
+  var dLng = (b[0] - a[0]) * Math.PI / 180;
+  var lat1 = a[1] * Math.PI / 180;
+  var lat2 = b[1] * Math.PI / 180;
+  var h = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.sin(dLng/2) * Math.sin(dLng/2) * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function nearestHtml(from) {
+  var src = map.getSource('places');
+  if (!src || !src._data || !src._data.features) return '';
+
+  var list = src._data.features.map(function(f) {
+    return {
+      name: f.properties.name,
+      cat: f.properties.category,
+      d: distanceM(from, f.geometry.coordinates)
+    };
+  }).sort(function(x, y) { return x.d - y.d; }).slice(0, 3);
+
+  if (list.length === 0) return '';
+
+  return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #ddd">' +
+    '<div style="font-weight:600;font-size:11px;margin-bottom:4px">Хамгийн ойрхон</div>' +
+    list.map(function(x) {
+      var c = cats.find(function(k) { return k.code === x.cat; });
+      var color = c ? c.color : '#888';
+      var dist = x.d < 1000
+        ? Math.round(x.d) + ' м'
+        : (x.d / 1000).toFixed(1) + ' км';
+      return '<div style="display:flex;align-items:center;gap:6px;font-size:11px;margin:3px 0">' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + x.name + '</span>' +
+        '<span style="color:#888">' + dist + '</span>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+  
 
 // Зургийг MapLibre-д бүртгэх
 function loadIcon(code, dataUrl) {
